@@ -1,4 +1,5 @@
 import Hotel from "../models/Hotel.js";
+import Room from "../models/Room.js";
 export const createHotel = async (req, res) => {
     const newHotel = await new Hotel(req.body);
 
@@ -54,7 +55,8 @@ export const getHotels = async (req, res) => {
         const hotel = await Hotel.find(
             {
                 ...others,
-                cheapestPrice: { $gt: min || 50000, $lt: max || 100000000 }
+                cheapestPrice: { $gt: min || 50000, $lt: max || 100000000 },
+
             }).limit(req.query.limit);
 
         if (hotel) {
@@ -67,7 +69,30 @@ export const getHotels = async (req, res) => {
         res.status(500).json({ "error": error })
     }
 }
-export const getByCity = async (req, res, next) => {
+export const getByCity = async (req, res) => {
+
+    const { min, max, ...others } = req.query;
+    const city = req.params.city;
+    try {
+        const hotel = await Hotel.find(
+            {
+                ...others,
+                cheapestPrice: { $gt: min || 50000, $lt: max || 100000000 },
+                city: { $regex: city, $options: 'i' }
+
+            }).limit(req.query.limit);
+
+        if (hotel) {
+            res.status(200).json(hotel);
+        } else {
+            res.status(501).json("Can not find hotel !")
+        }
+
+    } catch (error) {
+        res.status(500).json({ "error": error })
+    }
+}
+export const getCountByCity = async (req, res, next) => {
     var cities;
     if (req.query.cities) {
         cities = req.query?.cities.split(',');
@@ -110,5 +135,26 @@ export const getByType = async (req, res, next) => {
     } catch (error) {
 
         next(error)
+    }
+}
+export const getHotelRooms = async (req, res) => {
+    try {
+        const hotel = await Hotel.findById(req.params.id);
+        // const rooms = await Promise.all(hotel.rooms.map(room => {
+        //     return Room.findById(room);
+        // }))
+        const { rooms, ...others } = hotel._doc; //get all rooms: (_id)
+        //get all room with id
+        const listRoom = await Promise.all(rooms.map(room => {
+            // console.log(room)
+            return Room.findById(room);
+        }))
+
+        res.status(200).json(listRoom)
+
+        // console.log(roomss)
+        // res.json(rooms)
+    } catch (error) {
+        console.log(error)
     }
 }
